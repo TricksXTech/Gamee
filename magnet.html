@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magnet Sort Demo</title>
+
+<style>
+  :root {
+    --bg: #101827;
+    --panel: #182338;
+    --panel-2: #202f49;
+    --text: #f5f7fb;
+    --muted: #9daac1;
+    --accent: #5eead4;
+    --danger: #fb7185;
+    --cell: min(10vw, 62px);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text);
+    background:
+      radial-gradient(circle at top, #253b61 0%, transparent 38%),
+      var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .app {
+    width: min(100%, 760px);
+    margin: auto;
+    padding: 18px;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(24px, 5vw, 38px);
+  }
+
+  .subtitle {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .panel {
+    background: rgba(24, 35, 56, 0.94);
+    border: 1px solid #31425f;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.25);
+  }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 8px 11px;
+    font-size: 14px;
+  }
+
+  button,
+  select {
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 13px;
+    color: var(--text);
+    background: #334766;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  button:hover,
+  select:hover {
+    filter: brightness(1.15);
+  }
+
+  button:active {
+    transform: scale(0.97);
+  }
+
+  .button-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #board {
+    display: grid;
+    gap: 5px;
+    width: max-content;
+    max-width: 100%;
+    margin: 14px auto;
+    padding: 10px;
+    border-radius: 16px;
+    background: #0b1220;
+    border: 2px solid #2d3d5c;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  .cell {
+    width: var(--cell);
+    height: var(--cell);
+    min-width: 34px;
+    min-height: 34px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 10px;
+    background: #1b2941;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+
+  .cell.goal-red {
+    background: rgba(239, 68, 68, 0.17);
+    box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.35);
+  }
+
+  .cell.goal-blue {
+    background: rgba(59, 130, 246, 0.17);
+    box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.35);
+  }
+
+  .cell.obstacle {
+    background:
+      repeating-linear-gradient(
+        135deg,
+        #48566d 0,
+        #48566d 7px,
+        #344158 7px,
+        #344158 14px
+      );
+    box-shadow: inset 0 0 0 2px #61708a;
+  }
+
+  .cell.selected {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+    z-index: 3;
+  }
+
+  .piece,
+  .magnet {
+    width: 72%;
+    height: 72%;
+    position: relative;
+    z-index: 2;
+  }
+
+  .piece {
+    border-radius: 50%;
+    border: 4px solid #dfe8f5;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+  }
+
+  .piece.red {
+    background: radial-gradient(circle at 35% 30%, #fecaca, #ef4444 38%, #991b1b);
+  }
+
+  .piece.blue {
+    background: radial-gradient(circle at 35% 30%, #bfdbfe, #3b82f6 38%, #1e3a8a);
+  }
+
+  .piece::after {
+    content: "";
+    position: absolute;
+    inset: 24%;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+  }
+
+  .magnet {
+    width: 78%;
+    height: 78%;
+    border: 5px solid #e5e7eb;
+    border-top: 0;
+    border-radius: 0 0 45% 45%;
+    transform: rotate(0deg);
+    box-shadow: 0 4px 9px rgba(0,0,0,0.35);
+  }
+
+  .magnet.red {
+    border-color: #ef4444;
+  }
+
+  .magnet.blue {
+    border-color: #3b82f6;
+  }
+
+  .magnet::before,
+  .magnet::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    width: 12px;
+    height: 19px;
+    border-radius: 3px;
+    background: #e5e7eb;
+  }
+
+  .magnet::before {
+    left: -8px;
+  }
+
+  .magnet::after {
+    right: -8px;
+  }
+
+  .magnet.red::before,
+  .magnet.red::after {
+    background: #ef4444;
+  }
+
+  .magnet.blue::before,
+  .magnet.blue::after {
+    background: #3b82f6;
+  }
+
+  .north-label {
+    position: absolute;
+    z-index: 4;
+    top: 3px;
+    right: 5px;
+    font-size: 10px;
+    color: white;
+    font-weight: bold;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 13px;
+    margin: 12px 0;
+  }
+
+  .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .dot {
+    width: 13px;
+    height: 13px;
+    display: inline-block;
+    border-radius: 50%;
+  }
+
+  .dot.red { background: #ef4444; }
+  .dot.blue { background: #3b82f6; }
+  .dot.wall { background: #596981; }
+
+  #message {
+    min-height: 25px;
+    text-align: center;
+    color: var(--accent);
+    font-weight: bold;
+    margin: 10px 0 0;
+  }
+
+  .instructions {
+    margin-top: 16px;
+    color: var(--muted);
+    line-height: 1.55;
+    font-size: 14px;
+  }
+
+  .instructions strong {
+    color: var(--text);
+  }
+
+  @media (max-width: 480px) {
+    .app {
+      padding: 10px;
+    }
+
+    .panel {
+      padding: 11px;
+    }
+
+    :root {
+      --cell: 11vw;
+    }
+  }
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Magnet Sort</h1>
+      <p class="subtitle">Guide every metal piece to its matching goal.</p>
+    </div>
+    <select id="levelSelect" aria-label="Choose level"></select>
+  </header>
+
+  <main class="panel">
+    <div class="topbar">
+      <div class="stats">
+        <div class="stat">Level: <span id="levelNumber">1</span></div>
+        <div class="stat">Moves: <span id="moves">0</span></div>
+        <div class="stat">Pieces left: <span id="piecesLeft">0</span></div>
+      </div>
+
+      <div class="button-row">
+        <button id="undoBtn">Undo</button>
+        <button id="restartBtn">Restart</button>
+      </div>
+    </div>
+
+    <div id="board"></div>
+
+    <div class="legend">
+      <span><i class="dot red"></i> Red piece / goal</span>
+      <span><i class="dot blue"></i> Blue piece / goal</span>
+      <span><i class="dot wall"></i> Obstacle</span>
+    </div>
+
+    <div id="message"></div>
+
+    <div class="instructions">
+      <strong>How to play:</strong>
+      Tap a magnet to switch its polarity. Then tap a neighboring metal piece.
+      A magnet attracts a piece of the same color and pushes away a piece of the opposite color.
+      A piece moves one square if the destination is empty. Place every piece on its matching goal.
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+const levels = [
+  {
+    rows: 6,
+    cols: 7,
+    magnets: [
+      { r: 1, c: 1, color: "red", polarity: "red" },
+      { r: 4, c: 5, color: "blue", polarity: "blue" }
+    ],
+    pieces: [
+      { r: 1, c: 2, color: "red" },
+      { r: 4, c: 4, color: "blue" }
+    ],
+    goals: [
+      { r: 4, c: 1, color: "red" },
+      { r: 1, c: 5, color: "blue" }
+    ],
+    obstacles: [
+      { r: 2, c: 3 },
+      { r: 3, c: 3 }
+    ]
+  },
+
+  {
+    rows: 7,
+    cols: 8,
+    magnets: [
+      { r: 1, c: 1, color: "red", polarity: "red" },
+      { r: 5, c: 6, color: "blue", polarity: "blue" },
+      { r: 3, c: 6, color: "red", polarity: "red" }
+    ],
+    pieces: [
+      { r: 1, c: 2, color: "red" },
+      { r: 5, c: 5, color: "blue" },
+      { r: 3, c: 5, color: "red" }
+    ],
+    goals: [
+      { r: 5, c: 1, color: "red" },
+      { r: 1, c: 6, color: "blue" },
+      { r: 3, c: 1, color: "red" }
+    ],
+    obstacles: [
+      { r: 2, c: 2 },
+      { r: 2, c: 3 },
+      { r: 4, c: 4 },
+      { r: 4, c: 5 }
+    ]
+  },
+
+  {
+    rows: 8,
+    cols: 8,
+    magnets: [
+      { r: 1, c: 1, color: "red", polarity: "red" },
+      { r: 6, c: 6, color: "blue", polarity: "blue" },
+      { r: 1, c: 6, color: "red", polarity: "red" },
+      { r: 6, c: 1, color: "blue", polarity: "blue" }
+    ],
+    pieces: [
+      { r: 1, c: 2, color: "red" },
+      { r: 6, c: 5, color: "blue" },
+      { r: 1, c: 5, color: "red" },
+      { r: 6, c: 2, color: "blue" }
+    ],
+    goals: [
+      { r: 6, c: 1, color: "red" },
+      { r: 1, c: 6, color: "blue" },
+      { r: 6, c: 6, color: "red" },
+      { r: 1, c: 1, color: "blue" }
+    ],
+    obstacles: [
+      { r: 3, c: 2 },
+      { r: 3, c: 3 },
+      { r: 3, c: 4 },
+      { r: 4, c: 3 },
+      { r: 5, c: 3 },
+      { r: 5, c: 4 }
+    ]
+  }
+];
+
+const board = document.getElementById("board");
+const movesEl = document.getElementById("moves");
+const piecesLeftEl = document.getElementById("piecesLeft");
+const messageEl = document.getElementById("message");
+const levelNumberEl = document.getElementById("levelNumber");
+const levelSelect = document.getElementById("levelSelect");
+const undoBtn = document.getElementById("undoBtn");
+const restartBtn = document.getElementById("restartBtn");
+
+let levelIndex = 0;
+let state = null;
+let history = [];
+let selectedMagnet = null;
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function key(r, c) {
+  return `${r},${c}`;
+}
+
+function samePosition(a, b) {
+  return a.r === b.r && a.c === b.c;
+}
+
+function inside(r, c) {
+  return (
+    r >= 0 &&
+    r < state.rows &&
+    c >= 0 &&
+    c < state.cols
+  );
+}
+
+function getAt(list, r, c) {
+  return list.find(item => item.r === r && item.c === c);
+}
+
+function occupied(r, c) {
+  return (
+    getAt(state.magnets, r, c) ||
+    getAt(state.pieces, r, c) ||
+    getAt(state.obstacles, r, c)
+  );
+}
+
+function saveSnapshot() {
+  history.push({
+    magnets: clone(state.magnets),
+    pieces: clone(state.pieces),
+    moves: state.moves
+  });
+}
+
+function restoreSnapshot(snapshot) {
+  state.magnets = clone(snapshot.magnets);
+  state.pieces = clone(snapshot.pieces);
+  state.moves = snapshot.moves;
+  selectedMagnet = null;
+  render();
+}
+
+function loadLevel(index) {
+  levelIndex = index;
+  const source = levels[levelIndex];
+
+  state = {
+    rows: source.rows,
+    cols: source.cols,
+    magnets: clone(source.magnets),
+    pieces: clone(source.pieces),
+    goals: clone(source.goals),
+    obstacles: clone(source.obstacles),
+    moves: 0
+  };
+
+  history = [];
+  selectedMagnet = null;
+  messageEl.textContent = "";
+  levelNumberEl.textContent = levelIndex + 1;
+  levelSelect.value = levelIndex;
+  render();
+}
+
+function render() {
+  board.innerHTML = "";
+  board.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell))`;
+
+  const goals = new Map(
+    state.goals.map(goal => [key(goal.r, goal.c), goal])
+  );
+
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+
+      const goal = goals.get(key(r, c));
+      const obstacle = getAt(state.obstacles, r, c);
+      const magnet = getAt(state.magnets, r, c);
+      const piece = getAt(state.pieces, r, c);
+
+      if (goal) {
+        cell.classList.add(`goal-${goal.color}`);
+      }
+
+      if (obstacle) {
+        cell.classList.add("obstacle");
+      }
+
+      if (magnet) {
+        const magnetEl = document.createElement("div");
+        magnetEl.className = `magnet ${magnet.polarity}`;
+        magnetEl.title = `Magnet polarity: ${magnet.polarity}`;
+        magnetEl.style.transform = `rotate(${magnet.rotation || 0}deg)`;
+
+        const label = document.createElement("span");
+        label.className = "north-label";
+        label.textContent = magnet.polarity === "red" ? "R" : "B";
+
+        magnetEl.appendChild(label);
+        cell.appendChild(magnetEl);
+
+        if (
+          selectedMagnet &&
+          selectedMagnet.r === r &&
+          selectedMagnet.c === c
+        ) {
+          cell.classList.add("selected");
+        }
+      }
+
+      if (piece) {
+        const pieceEl = document.createElement("div");
+        pieceEl.className = `piece ${piece.color}`;
+        pieceEl.title = `${piece.color} metal piece`;
+        cell.appendChild(pieceEl);
+      }
+
+      cell.addEventListener("click", () => handleCellClick(r, c));
+      board.appendChild(cell);
+    }
+  }
+
+  movesEl.textContent = state.moves;
+
+  const remaining = state.pieces.filter(piece => {
+    const goal = getAt(state.goals, piece.r, piece.c);
+    return !goal || goal.color !== piece.color;
+  }).length;
+
+  piecesLeftEl.textContent = remaining;
+  undoBtn.disabled = history.length === 0;
+}
+
+function handleCellClick(r, c) {
+  const magnet = getAt(state.magnets, r, c);
+  const piece = getAt(state.pieces, r, c);
+
+  if (magnet) {
+    magnet.polarity = magnet.polarity === "red" ? "blue" : "red";
+    magnet.rotation = (magnet.rotation || 0) + 180;
+    selectedMagnet = { r, c };
+    state.moves++;
+    messageEl.textContent = `Magnet switched to ${magnet.polarity}.`;
+    render();
+    checkWin();
+    return;
+  }
+
+  if (piece && selectedMagnet) {
+    attemptMove(selectedMagnet, piece);
+    return;
+  }
+
+  selectedMagnet = null;
+  messageEl.textContent = "Select a magnet, then tap a neighboring piece.";
+  render();
+}
+
+function attemptMove(magnetPosition, piece) {
+  const magnet = getAt(
+    state.magnets,
+    magnetPosition.r,
+    magnetPosition.c
+  );
+
+  if (!magnet) {
+    selectedMagnet = null;
+    render();
+    return;
+  }
+
+  const distance =
+    Math.abs(piece.r - magnet.r) +
+    Math.abs(piece.c - magnet.c);
+
+  if (distance !== 1) {
+    messageEl.textContent = "A magnet can only affect a neighboring piece.";
+    return;
+  }
+
+  const dr = piece.r - magnet.r;
+  const dc = piece.c - magnet.c;
+
+  let targetR = piece.r;
+  let targetC = piece.c;
+
+  if (piece.color === magnet.polarity) {
+    targetR += dr;
+    targetC += dc;
+    messageEl.textContent = "Attracted!";
+  } else {
+    targetR -= dr;
+    targetC -= dc;
+    messageEl.textContent = "Repelled!";
+  }
+
+  if (!inside(targetR, targetC)) {
+    messageEl.textContent = "The piece cannot leave the board.";
+    return;
+  }
+
+  if (occupied(targetR, targetC)) {
+    messageEl.textContent = "That space is blocked.";
+    return;
+  }
+
+  saveSnapshot();
+
+  piece.r = targetR;
+  piece.c = targetC;
+  state.moves++;
+  selectedMagnet = null;
+
+  render();
+  checkWin();
+}
+
+function checkWin() {
+  const complete = state.pieces.every(piece => {
+    const goal = getAt(state.goals, piece.r, piece.c);
+    return goal && goal.color === piece.color;
+  });
+
+  if (!complete) return;
+
+  messageEl.textContent = "Level complete! Great magnetic thinking.";
+
+  if (levelIndex < levels.length - 1) {
+    setTimeout(() => {
+      const next = confirm(
+        "Level complete! Would you like to play the next level?"
+      );
+
+      if (next) {
+        loadLevel(levelIndex + 1);
+      }
+    }, 150);
+  }
+}
+
+function populateLevels() {
+  levels.forEach((_, index) => {
+    const option = document.createElement("option");
+    option.value = index;
+    option.textContent = `Level ${index + 1}`;
+    levelSelect.appendChild(option);
+  });
+}
+
+undoBtn.addEventListener("click", () => {
+  if (history.length === 0) return;
+  restoreSnapshot(history.pop());
+  messageEl.textContent = "Move undone.";
+});
+
+restartBtn.addEventListener("click", () => {
+  loadLevel(levelIndex);
+});
+
+levelSelect.addEventListener("change", event => {
+  loadLevel(Number(event.target.value));
+});
+
+populateLevels();
+loadLevel(0);
+</script>
+</body>
+</html>
